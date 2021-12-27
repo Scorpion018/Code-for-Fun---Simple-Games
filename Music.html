@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<head>
+    <style>
+        div {
+    font-family: monospace;
+}
+    </style>
+</head>
+<html>
+    <body align="center">
+        <button onclick="generateNotes();">Generate New Notes</button>
+        <div class="notes">Notes:</div>
+        <div class="acc">0</div>
+    </body>
+    <script>
+        //Baron
+log=a=>console.log(JSON.stringify(a));
+log("All notes are between C5 and C6");
+alert("Training... Please wait, may take up to 45 seconds.");
+function mul(a,b) {
+    if(Array.isArray(a[0][0])) a=a[0];
+    var result=new Array(a.length).fill(0).map(row=>new Array(b[0].length).fill(0));
+    return result.map((row,i)=>{
+        return row.map((val,j)=>{
+            return a[i].reduce((sum,elm,k)=>sum+(elm*b[k][j]),0);
+        });
+    });
+} //Was too lazy to make my own matrix product convertor
+function mult(a,b) {
+    var r=[];
+    for(var i=0;i<a.length;i++) {
+        var l=[];
+        for(var j=0;j<a[i].length;j++) {
+            l.push(a[i][j]*b);
+        }
+        r.push(l);
+    }
+    return r;
+}
+function add(a,b) {
+    var res=[];
+    for(var i=0;i<Math.min(a.length,b.length);i++) {
+        for(var j=0;j<Math.min(a[i].length,b[i].length);j++) {
+        res.push([a[i][j]+b[i][j]]);
+        }
+    }
+    return res;
+}
+function sub(a,b) {
+    var res=[];
+    for(var i=0;i<Math.min(a.length,b.length);i++) {
+        for(var j=0;j<Math.min(a[i].length,b[i].length);j++) {
+        res.push([a[i][j]-b[i][j]]);
+        }
+    }
+    return res;
+}
+function trans(a) {
+    var ell=a[0].length;
+    var ra=new Array(ell);
+    for(var j=0;j<a.length;j++) {
+        for(var k=0;k<a[j].length;k++) {
+            if(!ra[k]) ra[k]=[];
+            ra[k].push(a[j][k]);
+        }
+    }
+    return ra;
+}
+class NeuralNetwork {
+    constructor(a) {
+        this.w=[];
+        for(var i=0;i<a;i++) {
+            this.w[i]=[Math.random()-.5];
+        }
+    }
+    think(a) {
+        if(!isNaN(a[0])) a=[a];
+        return mul(a,this.w);
+    }
+    //-... .- .-. --- -.
+    train(a,b,c) {
+        for(var i=0;i<c;i++) {
+            var d=this.think(a);
+            var e=sub(b,d);
+            var f=trans(a);
+            var g=mult(mul(f,e),.01);
+            this.w=add(this.w,g);
+        }
+    }
+}
+function copy(a) {
+    return JSON.parse(JSON.stringify(a));
+}
+
+var context=new (AudioContext||webkitAudioContext)();
+var o;
+var g;
+function playNote(a) {
+    if(o||g)
+        stopNote(0.04,a);
+    o=context.createOscillator();
+    g=context.createGain();
+    o.type="sine";
+    o.frequency.value=a/2;
+    o.connect(g);
+    g.connect(context.destination);
+    o.start(0);
+}
+function stopNote(a) {
+    g.gain.exponentialRampToValueAtTime(0.00001,context.currentTime+a);
+}
+
+var freq={
+    "C":523.251,
+    "D":587.33,
+    "E":659.255,
+    "F":698.456,
+    "G":783.99,
+    "A":880,
+    "B":987.767,
+    "Ç":1046.502
+};
+
+
+
+var songs=[];
+var n=new NeuralNetwork(26);
+var ns=[
+6,6,6,6,6,6,6,2,4,6,
+5,5,5,5,5,5,5,1,3,5,
+6,6,6,6,6,6
+].map(x=>x=x/8);
+songs.push(copy(ns));
+var ns=[
+8,7,6,5,4,5,6,8,
+7,6,5,4,3,
+6,5,4,3,2,3,4,
+6,5,4,3,2,1
+].map(x=>x=x/8);
+songs.push(copy(ns));
+var ns=[
+4,5,6,8,8,4,5,6,8,8,
+6,5,4,2,2,6,5,4,2,2,
+4,5,6,8,8,4
+].map(x=>x=x/8);
+songs.push(copy(ns));
+var ns=[
+1,2,3,5,6,2,
+1,2,6,5,
+3,3,2,1,
+1,2,3,5,6,2,
+1,2,6,5,
+3,3
+].map(x=>x=x/8);
+songs.push(copy(ns));
+var ns=[
+2,3,5,3,7,7,6,
+2,3,5,3,6,6,5,
+2,3,5,3,5,6,5,3,2,
+2,6,5
+].map(x=>x=x/8);
+songs.push(copy(ns));
+for(var i=0;i<songs.length;i++) {
+    n.train([songs[i]],[[1]],2000);
+}
+
+function generateNotes() {
+    var pr=0;
+    var result;
+    var nums=[0,.125,.25,.375,.5,.625,.75,.875]
+    for(var i=0;i<8000;i++) {
+        var ne=new Array(26).fill(0).map(x=>x=nums[Math.floor(Math.random()*nums.length)]);
+        var npr=n.think([ne]);
+        if(Math.abs(pr-1)>Math.abs(npr-1)) {
+            pr=npr;
+            result=ne;
+        }
+    }
+    var digits="CDEFGABÇ".split("");
+    
+    result=result.map(x=>x=digits[x*8]);
+    document.getElementsByClassName("notes")[0].innerHTML="<font color=red>("+result[0].replace(/Ç/,"C5")+")</font> ("+result.slice(1).join(") (").replace(/Ç/g,"C5")+")";
+    document.getElementsByClassName("acc")[0].innerText="Accuracy: "+(100-Math.abs(pr-1)*100).toFixed(3)+"%";
+    var c=0;
+    var l=setInterval(()=>{
+        if(c<26) {
+            playNote(freq[result[c]]);
+            stopNote(3);
+            var li=[];
+            for(var i=0;i<result.length;i++) {
+                if(c===i) li.push("<font color=red>("+result[i].replace(/Ç/,"C5")+")</font>");
+                else li.push("("+result[i].replace(/Ç/,"C5")+")");
+            }
+            document.getElementsByClassName("notes")[0].innerHTML=li.join(" ");
+            c++;
+        } else {
+            clearInterval(l);
+            l=undefined;
+        }
+    },550);
+}
+    </script>
+</html>
